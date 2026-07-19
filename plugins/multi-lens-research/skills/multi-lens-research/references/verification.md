@@ -87,3 +87,13 @@ their origin before you upgrade confidence.
 - Never upgrade confidence to make the answer look cleaner. An honest "contested" or
   "unknown" is the deliverable working correctly, not a failure.
 - Preserve provenance so any claim can be re-checked later by following its citation.
+
+## Handing verified claims to the inference check
+
+Verification tells you a claim's evidence is sound. It does not tell you whether a *conclusion
+drawn from* that claim actually follows. Those are different failures: a well-verified fact can be
+used in a broken inference (a fallacy, an ignored base rate, a load-bearing assumption). When the
+task is to judge an argument built on these findings, hand the verified claims to a
+`critical-reasoning` skill (if present) for the Level-2 inference check. It shares these same
+evidence rules, so the two never give contradictory advice: this rubric owns "is the evidence
+sound", the reasoning skill owns "does the conclusion follow".

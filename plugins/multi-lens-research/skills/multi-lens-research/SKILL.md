@@ -35,6 +35,11 @@ The method is three commitments:
   lenses in parallel. See `references/orchestration.md`. Without it, run the
   sequential fallback in the same file. The method is identical; only the wiring
   differs.
+- **A `critical-reasoning` skill** (if present) owns the *inference* check. This skill verifies
+  that the sources are sound; hand its verified findings to `critical-reasoning` to test whether a
+  conclusion drawn from them actually follows (fallacies, biases, load-bearing assumptions). The
+  two share the same Level-1 evidence rules, so they compose without contradicting each other:
+  this skill is the research *workflow*, that one is the reasoning *discipline*.
 - This skill is about **finding and vetting truth**, not writing final prose. If a
   separate writing/voice skill is active, hand it the synthesized, cited findings.
 

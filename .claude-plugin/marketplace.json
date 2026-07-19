@@ -19,6 +19,11 @@
       "name": "multi-lens-research",
       "source": "./plugins/multi-lens-research",
       "description": "Rigorous multi-lens research: instead of repeating one search, it researches from distinct lenses (academic, technical, applied, news, and a dedicated contrarian lens), adversarially verifies load-bearing claims, runs anti-confirmation-bias rounds, and reports what is verified, contested, and unknown, with citations. Parallel subagent fan-out or single-agent fallback."
+    },
+    {
+      "name": "critical-reasoning",
+      "source": "./plugins/critical-reasoning",
+      "description": "Disciplined critical reasoning instead of fallacy labeling: given a claim, argument, or decision, it tests whether the evidence is sound (independent, current, primary, corroborated not repeated), then whether the inference follows (reconstruct, steelman, find the load-bearing assumption, run only the checks that matter), and reports sound / load-bearing flaw / nitpick. It separates 'the argument is weak' from 'the conclusion is false' and suppresses nitpicks. Composes with multi-lens-research."
     }
   ]
 }
