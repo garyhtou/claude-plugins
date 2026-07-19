@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Model Auditor</title>
+  <!--
+    A standalone GLB auditor: orbit + scriptable camera, a deploy scrubber to
+    watch articulation FRAME BY FRAME, per-part bounding boxes, pivot-axis
+    markers, and a triangle-accurate (three-mesh-bvh) CLIP DETECTOR that sweeps
+    the deploy animation and reports which parts intersect at which t.
+
+    Serve it from any static server (e.g. `npx serve`) or drop it into your dev
+    server (then switch the importmap to your bundler's bare specifiers). Drive
+    it from automation via window.orbit / setTarget / setDeploy / auditClip and
+    screenshot. Edit the CONFIG block for your model's rig.
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    * { margin: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #0a0c10; color: #d8dee9; font: 12px/1.4 ui-monospace, monospace; }
+    #app { position: fixed; inset: 0; }
+    #panel { position: fixed; top: 10px; left: 10px; width: 280px; max-height: calc(100% - 20px);
+      overflow: auto; background: rgba(12,15,20,.86); border: 1px solid #1d2530; border-radius: 8px;
+      padding: 10px; backdrop-filter: blur(6px); z-index: 10; }
+    #panel h1 { font-size: 12px; letter-spacing: .12em; color: #7fd4ff; margin-bottom: 8px; }
+    .row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    button { background: #131922; color: #cfe6ff; border: 1px solid #26303d; border-radius: 5px;
+      padding: 4px 7px; font: inherit; cursor: pointer; }
+    button:hover { background: #1b2533; }
+    button.on { background: #1f4f6b; border-color: #2f7fa8; color: #eaf7ff; }
+    label { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+    #stats { white-space: pre-wrap; color: #8ea0b4; font-size: 11px; margin-top: 8px; border-top: 1px solid #1d2530; padding-top: 8px; }
+    #nodes { white-space: pre-wrap; color: #7d8ea2; font-size: 10px; margin-top: 8px; border-top: 1px solid #1d2530; padding-top: 8px; max-height: 240px; overflow: auto; }
+    .warn { color: #ff8a6b; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+      "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.7.8/build/index.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="panel">
+    <h1>MODEL AUDITOR</h1>
+    <div class="row">
+      <button id="b-wire">wireframe</button><button id="b-normals">normals</button>
+      <button id="b-spin" class="on">spin</button><button id="b-bbox">bboxes</button><button id="b-grid" class="on">grid</button>
+    </div>
+    <div class="row">
+      <button id="b-deploy">deploy ▸</button><button id="b-stow">stow ▸</button>
+      <button id="b-pivots">pivots</button><button id="b-clip">clip audit</button>
+    </div>
+    <div class="row">
+      <label style="flex:1">t<input id="b-scrub" type="range" min="0" max="1" step="0.02" value="1" style="flex:1"><b id="b-scrubval" style="color:#7fd4ff">1.00</b></label>
+    </div>
+    <div class="row">
+      <button data-view="front">front</button><button data-view="side">side</button>
+      <button data-view="top">top</button><button data-view="iso">iso</button><button data-view="back">back</button>
+    </div>
+    <div id="stats">loading…</div>
+    <div id="nodes"></div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { MeshBVH } from 'three-mesh-bvh';
+
+    // ===================== CONFIG: edit for your model =====================
+    const MODEL_URL = new URLSearchParams(location.search).get('model') || 'model.glb';
+    const DRACO_PATH = 'https://www.gstatic.com/draco/versioned/decoders/1.5.6/'; // or local '/draco/'
+    const PIVOT_RE = /^(pivot_|joint_|arm_j)/;   // deployable/articulated joint nodes
+    const SPINNER_RE = /^(wheel|rotor|prop|fan|turbine)\d/;  // continuously-spinning radial nodes
+    // SPIN: per-spinner [localAxis, radPerSec]. Axis is NOT assumed: after Z-up -> Y-up
+    // a disc's axle can land on any axis; check a Box3 dump and set it. Unlisted spinners
+    // use SPIN_DEFAULT.
+    const SPIN = window.__SPIN = { /* rotor0: ['y', 8], */ };
+    const SPIN_DEFAULT = ['z', 0.6];
+    // STOW: per joint, [localAxis, foldRadians]. t=1 = deployed (rest pose as built);
+    // t=0 = folded (adds foldRadians on that axis). Mirror your app's deploy config.
+    const STOW = window.__STOW = {
+      // pivot_lid: ['x', -2.2],
+      // arm_j2:    ['z', -2.9],
+    };
+    // CLIP_PAIRS: pairs of OWNER names that must NEVER intersect. An owner is a
+    // joint/wheel node name (above) or 'static' (everything not under a joint).
+    // List distal-part-vs-body and cross-appendage pairs; OMIT joint-adjacent
+    // contact (a joint's own root always touches the body) UNLESS you mounted the
+    // root with a small air-gap so the whole segment is genuinely clear.
+    const CLIP_PAIRS = [
+      // ['pivot_lid', 'static'], ['arm_j3', 'static'], ['arm_j3', 'wheel0'],
+    ];
+    // =======================================================================
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+    document.getElementById('app').appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0c10);
+    const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(5, 8, 4); scene.add(key);
+    const fill = new THREE.DirectionalLight(0x88aaff, 0.6); fill.position.set(-6, 3, -4); scene.add(fill);
+    scene.add(new THREE.AmbientLight(0x404a5a, 0.6));
+    const grid = new THREE.GridHelper(12, 24, 0x2a3340, 0x161c24); scene.add(grid);
+    scene.add(new THREE.AxesHelper(2));
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.target.set(0, 1, 0);
+    // precise framing for automated review (orbit on a sphere around the target,
+    // setting camera position + lookAt directly so damping never fights you).
+    window.setTarget = (x, y, z) => controls.target.set(x, y, z);
+    window.orbit = (azDeg, elDeg, dist, tgt) => {
+      if (tgt) controls.target.set(tgt[0], tgt[1], tgt[2]);
+      const t = controls.target, az = azDeg * Math.PI / 180, el = elDeg * Math.PI / 180;
+      camera.position.set(t.x + dist * Math.cos(el) * Math.cos(az), t.y + dist * Math.sin(el), t.z + dist * Math.cos(el) * Math.sin(az));
+      camera.lookAt(t);
+    };
+
+    const draco = new DRACOLoader().setDecoderPath(DRACO_PATH);
+    const loader = new GLTFLoader().setDRACOLoader(draco);
+    let root = null, deployables = {}, spinners = [], spin = true, bboxGroup = null, deployT = 1, normalMat = null;
+
+    loader.load(MODEL_URL, (gltf) => {
+      root = gltf.scene; scene.add(root);
+      const box = new THREE.Box3().setFromObject(root), size = new THREE.Vector3(), center = new THREE.Vector3();
+      box.getSize(size); box.getCenter(center); controls.target.copy(center);
+      camera.position.set(center.x + size.x * 1.4, center.y + size.y * 0.7, center.z + size.z * 1.8);
+      root.traverse((n) => {
+        if (PIVOT_RE.test(n.name)) deployables[n.name] = { node: n, rest: n.rotation.clone() };
+        if (SPINNER_RE.test(n.name)) spinners.push(n);
+      });
+      Object.assign(window, { scene, root, camera, THREE, deployables, spinners });
+      document.getElementById('stats').textContent =
+        `bounds: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}\n` +
+        `joints: ${Object.keys(deployables).join(', ') || 'none'}\nspinners: ${spinners.length}`;
+      const lines = []; root.traverse((n) => { const p = new THREE.Vector3(); n.getWorldPosition(p);
+        lines.push(`${(n.isMesh ? 'mesh' : 'node').padEnd(4)} ${n.name || '(unnamed)'}  [${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}]`); });
+      document.getElementById('nodes').textContent = lines.join('\n');
+    }, undefined, (err) => { document.getElementById('stats').innerHTML = '<span class="warn">LOAD ERROR: ' + err + '</span>'; });
+
+    const setView = (v) => {
+      if (!root) return;
+      const b = new THREE.Box3().setFromObject(root), s = new THREE.Vector3(), c = new THREE.Vector3();
+      b.getSize(s); b.getCenter(c); controls.target.copy(c);
+      const r = Math.max(s.x, s.y, s.z) * 1.6;
+      camera.position.set(...{ front: [r, c.y, 0], back: [-r, c.y, 0], side: [0, c.y, r], top: [0.01, c.y + r, 0.01], iso: [r * 0.8, c.y + r * 0.5, r * 0.9] }[v]);
+    };
+    document.querySelectorAll('[data-view]').forEach(btn => btn.onclick = () => setView(btn.dataset.view));
+
+    const T = (id, fn) => { const el = document.getElementById(id); el.onclick = () => { el.classList.toggle('on'); fn(el.classList.contains('on')); }; };
+    T('b-wire', (on) => root && root.traverse(n => { if (n.isMesh) n.material.wireframe = on; }));
+    // normals mode: color by interpolated normal. Instantly reveals faceting (hard
+    // facets) vs over-smoothing (a gradient smeared across a flat panel = missing
+    // weighted normals). The fastest way to diagnose a shading complaint.
+    T('b-normals', (on) => {
+      if (!root) return;
+      if (on) {
+        normalMat = normalMat || new THREE.MeshNormalMaterial();
+        root.traverse(n => { if (n.isMesh) { n.userData._mat = n.material; n.material = normalMat; } });
+      } else root.traverse(n => { if (n.isMesh && n.userData._mat) n.material = n.userData._mat; });
+    });
+    T('b-spin', (on) => spin = on);
+    T('b-grid', (on) => grid.visible = on);
+    T('b-bbox', (on) => {
+      if (bboxGroup) { scene.remove(bboxGroup); bboxGroup = null; }
+      if (on && root) { bboxGroup = new THREE.Group();
+        root.traverse(n => { if (n.isMesh) bboxGroup.add(new THREE.Box3Helper(new THREE.Box3().setFromObject(n), 0x3fa9ff)); });
+        scene.add(bboxGroup); }
+    });
+
+    const scrub = document.getElementById('b-scrub'), scrubVal = document.getElementById('b-scrubval');
+    const setDeploy = (t) => { deployT = Math.max(0, Math.min(1, t)); scrub.value = deployT; scrubVal.textContent = deployT.toFixed(2); };
+    scrub.addEventListener('input', () => setDeploy(parseFloat(scrub.value)));
+    document.getElementById('b-deploy').onclick = () => setDeploy(1);
+    document.getElementById('b-stow').onclick = () => setDeploy(0);
+    window.setDeploy = setDeploy;
+
+    let pivotMarkers = null;
+    document.getElementById('b-pivots').onclick = (e) => {
+      e.currentTarget.classList.toggle('on');
+      if (pivotMarkers) { pivotMarkers.forEach(m => m.parent && m.parent.remove(m)); pivotMarkers = null; return; }
+      pivotMarkers = [];
+      for (const name of Object.keys(deployables)) { const a = new THREE.AxesHelper(0.6); deployables[name].node.add(a); pivotMarkers.push(a); }
+    };
+
+    addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+    // apply the fold ABSOLUTELY each frame so any scrub value reproduces exactly
+    const applyDeploy = (t) => {
+      for (const [name, d] of Object.entries(deployables)) {
+        const s = STOW[name]; if (!s) continue;
+        d.node.rotation[s[0]] = d.rest[s[0]] + (1 - t) * s[1];
+      }
+    };
+    const clock = new THREE.Clock();
+    renderer.setAnimationLoop(() => {
+      const dt = clock.getDelta();
+      if (spin && root) root.rotation.y += dt * 0.4;
+      applyDeploy(deployT);
+      for (const s of spinners) { const c = SPIN[s.name] || SPIN_DEFAULT; s.rotation[c[0]] += c[1] * dt; }
+      controls.update(); renderer.render(scene, camera);
+    });
+
+    // ---- programmatic clip detector: true mesh∩mesh via BVH, swept over t -----
+    // The glTF exporter splits each joined multi-material mesh into one primitive
+    // per material under a Group, so group EVERY mesh primitive by its nearest
+    // joint/wheel ancestor (else 'static') and test list-vs-list.
+    window.auditClip = function (steps = 21) {
+      if (!root) return 'no model';
+      root.updateMatrixWorld(true);
+      const groups = {};
+      root.traverse((m) => {
+        if (!m.isMesh) return;
+        let p = m, owner = 'static';
+        while (p) { if (PIVOT_RE.test(p.name) || SPINNER_RE.test(p.name)) { owner = p.name; break; } p = p.parent; }
+        (groups[owner] = groups[owner] || []).push(m);
+        if (!m.userData.bvh) m.userData.bvh = new MeshBVH(m.geometry);
+      });
+      const _m = new THREE.Matrix4();
+      const hit = (la, lb) => {
+        const A = groups[la] || [], B = groups[lb] || [];
+        for (const a of A) for (const b of B) {
+          _m.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
+          if (a.userData.bvh.intersectsGeometry(b.geometry, _m)) return true;
+        }
+        return false;
+      };
+      const report = {};
+      for (let i = 0; i < steps; i++) {
+        const t = i / (steps - 1); applyDeploy(t); root.updateMatrixWorld(true);
+        for (const [a, b] of CLIP_PAIRS) if (hit(a, b)) { const k = a + ' ∩ ' + b; (report[k] = report[k] || []).push(+t.toFixed(2)); }
+      }
+      applyDeploy(1); root.updateMatrixWorld(true);
+      const lines = Object.entries(report).map(([k, ts]) => `${k}  @t=[${ts[0]}..${ts[ts.length - 1]}] (${ts.length}/${steps})`);
+      const out = lines.length ? lines.join('\n') : '✓ no clips across the deploy sweep';
+      const el = document.getElementById('stats'); if (el) el.textContent = 'CLIP AUDIT:\n' + out;
+      return out;
+    };
+    document.getElementById('b-clip').onclick = () => window.auditClip();
+    window.__ready = true;
+  </script>
+</body>
+</html>
