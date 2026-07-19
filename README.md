@@ -2,7 +2,11 @@
 
 **Claude Code plugins that make Claude build like a senior specialist, not a generic assistant.** Free, open, and grounded in real craft. Add the marketplace once, install what you want.
 
+Here is a site one of these plugins built, start to finish (this is example output, not this repo's own page):
+
 [![Zoomies, an awwwards-grade animated site built with the high-fidelity-web plugin](https://zoomies.garytou.dev/preview/hero.png)](https://zoomies.garytou.dev/)
+
+<sub>☝️ **[Zoomies](https://zoomies.garytou.dev/)**, a "Strava for cats" demo built end to end by the **high-fidelity-web** plugin in this repo. More demos, and the plugins themselves, below.</sub>
 
 ## Install
 
