@@ -1,0 +1,55 @@
+/*
+ * reduced-motion.css
+ * Accessibility baseline for the high-fidelity-web skill (Phase 6 to 7).
+ *
+ * The correct response to prefers-reduced-motion is NOT "remove all animation."
+ * It is "remove movement, position changes, and parallax; KEEP gentle opacity and
+ * color transitions that aid comprehension." Movement is the vestibular trigger;
+ * a fade is usually fine and still communicates state.
+ *
+ * Approach: a near-instant global floor for transitions/animations, then
+ * selectively re-enable opacity/color fades. Also neutralize scroll-jacking
+ * (Lenis/smooth scroll) and parallax under the query.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Re-enable gentle, non-moving feedback that helps users understand state. */
+  a, button, [role="button"], input, select, textarea,
+  .fade, [data-fade] {
+    transition-property: opacity, color, background-color, border-color !important;
+    transition-duration: 150ms !important;
+  }
+
+  /* Kill transform-based motion specifically (parallax, slide-ins, scale pops). */
+  [data-parallax],
+  [data-motion] {
+    transform: none !important;
+  }
+}
+
+/*
+ * JS side (pair with the CSS above):
+ *
+ *   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ *
+ *   // GSAP: build motion only when motion is allowed; auto-reverts otherwise.
+ *   const mm = gsap.matchMedia();
+ *   mm.add("(prefers-reduced-motion: no-preference)", () => {
+ *     // scroll-triggered/parallax tweens go here
+ *   });
+ *
+ *   // Lenis smooth scroll: disable under reduced motion.
+ *   const lenis = reduce ? null : new Lenis();
+ *
+ *   // View Transitions: skip the animation.
+ *   if (reduce) transition.skipTransition();
+ */
