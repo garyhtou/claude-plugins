@@ -1,0 +1,19 @@
+{
+  "name": "garyhtou",
+  "description": "Gary Tou's personal marketplace of Claude Code plugins. Add it once, then install any plugin from it.",
+  "owner": {
+    "name": "Gary Tou"
+  },
+  "plugins": [
+    {
+      "name": "high-fidelity-web",
+      "source": "./plugins/high-fidelity-web",
+      "description": "Design-engineering skills for awwwards-grade interactive, animated marketing and landing sites: a full-lifecycle build skill, a standalone quality-audit skill, and a skill for building 3D models for the web (procedural Blender to glTF to Three.js/R3F)."
+    },
+    {
+      "name": "rails-testing",
+      "source": "./plugins/rails-testing",
+      "description": "Senior Rails test engineering for both RSpec and Minitest. Auto-detects the framework, then writes behavior-first tests that don't go flaky or silently slow: Sandi Metz's mocking policy, a classicist default, request-specs-over-controller-specs, first-class Minitest + fixtures, factory_bot discipline, a flaky-test playbook, and N+1 / query-count performance tests. Composes with test-driven-development."
+    }
+  ]
+}
