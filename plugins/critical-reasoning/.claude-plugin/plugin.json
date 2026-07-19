@@ -1,0 +1,21 @@
+{
+  "name": "critical-reasoning",
+  "description": "Turns Claude into a disciplined critical reasoner instead of a fallacy labeler. Given a claim, argument, or decision, it runs an ordered two-level pass: first it tests whether the EVIDENCE is sound (independent, current, primary, actually corroborated rather than repeated, incentive-checked), then it tests whether the INFERENCE follows (reconstruct the argument, steelman it, name its type and the few critical questions that fit, find the load-bearing assumption, run only the checks that matter). It reports three tiers, sound / load-bearing flaw / nitpick, and suppresses the nitpicks. Anti-slop by design and grounded in the evidence that intrinsic self-critique degrades correct answers: it separates 'the argument is weak' from 'the conclusion is false', only raises a flaw when fixing it would change the conclusion, never dismisses a claim by naming a fallacy, and defers to evidence on what is true. Composes with multi-lens-research: that skill gathers and verifies sources at scale, this one owns the reasoning discipline applied to an argument already in front of you.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Gary Tou"
+  },
+  "license": "MIT",
+  "keywords": [
+    "critical-thinking",
+    "reasoning",
+    "argument-evaluation",
+    "logical-fallacies",
+    "cognitive-bias",
+    "evidence",
+    "steelman",
+    "epistemics",
+    "decision-quality",
+    "verification"
+  ]
+}
