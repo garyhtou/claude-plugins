@@ -1,0 +1,21 @@
+{
+  "name": "rails-testing",
+  "description": "Turns Claude into a senior Rails test engineer for both RSpec and Minitest. Auto-detects the project's framework, then writes tests that check behavior (not implementation), run green for the right reasons, don't go flaky, and don't silently go slow. Encodes Sandi Metz's mocking/assertion policy, a classicist default, request-specs-over-controller-specs, first-class Minitest + fixtures, a flaky-test playbook, and performance-regression tests (N+1 and query counts, strict_loading). Composes with test-driven-development.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Gary Tou"
+  },
+  "license": "MIT",
+  "keywords": [
+    "rails",
+    "ruby",
+    "testing",
+    "rspec",
+    "minitest",
+    "factory-bot",
+    "tdd",
+    "request-specs",
+    "system-tests",
+    "flaky-tests"
+  ]
+}
