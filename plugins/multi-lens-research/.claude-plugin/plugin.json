@@ -1,0 +1,21 @@
+{
+  "name": "multi-lens-research",
+  "description": "Turns Claude into a rigorous multi-lens researcher. Instead of firing several identical 'research this' searches that converge on the same first-page consensus, it assigns distinct research lenses (academic, technical, applied, news, and a dedicated contrarian lens), gathers claims with sources and confidence, adversarially verifies the load-bearing ones, runs anti-confirmation-bias follow-up rounds that weight the disconfirming side, and synthesizes a cited report that separates verified from contested from unknown. Runs as a parallel subagent fan-out when the harness supports it, or a single-agent sequential loop when it doesn't. Composes with deep-research and web-search skills.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Gary Tou"
+  },
+  "license": "MIT",
+  "keywords": [
+    "research",
+    "deep-research",
+    "multi-agent",
+    "fact-checking",
+    "verification",
+    "confirmation-bias",
+    "citations",
+    "synthesis",
+    "web-search",
+    "subagents"
+  ]
+}

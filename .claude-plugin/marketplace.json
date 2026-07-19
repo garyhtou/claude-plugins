@@ -14,6 +14,11 @@
       "name": "rails-testing",
       "source": "./plugins/rails-testing",
       "description": "Senior Rails test engineering for both RSpec and Minitest. Auto-detects the framework, then writes behavior-first tests that don't go flaky or silently slow: Sandi Metz's mocking policy, a classicist default, request-specs-over-controller-specs, first-class Minitest + fixtures, factory_bot discipline, a flaky-test playbook, and N+1 / query-count performance tests. Composes with test-driven-development."
+    },
+    {
+      "name": "multi-lens-research",
+      "source": "./plugins/multi-lens-research",
+      "description": "Rigorous multi-lens research: instead of repeating one search, it researches from distinct lenses (academic, technical, applied, news, and a dedicated contrarian lens), adversarially verifies load-bearing claims, runs anti-confirmation-bias rounds, and reports what is verified, contested, and unknown, with citations. Parallel subagent fan-out or single-agent fallback."
     }
   ]
 }
