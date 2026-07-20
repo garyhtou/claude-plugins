@@ -27,6 +27,8 @@ Run `/plugin` to confirm the skills are available.
 | --- | --- | --- |
 | **high-fidelity-web** | `high-fidelity-web`, `quality-audit`, `building-3d-for-web` | You want an awwwards-grade animated marketing/landing site: the full brainstorm-to-QA build, a standalone polish audit of an existing page, or believable web 3D (procedural Blender to glTF/GLB to Three.js/R3F). |
 | **rails-testing** | `rails-testing` | You want senior-level Rails tests in RSpec or Minitest: behavior-first, non-flaky, N+1/performance-guarded, with a disciplined mocking policy. Composes with `test-driven-development`. |
+| **multi-lens-research** | `multi-lens-research` | You need research you can trust, not just plausible-sounding: literature reviews, vendor/tech comparisons, "state of the art" scans, due diligence. Researches from distinct lenses (incl. a contrarian one), verifies load-bearing claims, and reports verified vs. contested vs. unknown with citations. |
+| **critical-reasoning** | `critical-reasoning` | You want to know whether a claim, argument, or decision actually holds up: pressure-test a design doc/RFC/PR argument, vet a vendor or benchmark claim, poke holes in your own draft. Tests evidence, then inference, and reports sound / load-bearing flaw / nitpick without the fallacy-labeling slop. |
 
 **For coding agents:** each skill auto-triggers from its `description` when your request matches, so you rarely name a skill, just describe the task ("build a premium landing hero", "write a request spec for checkout", "why does this feel cheap"). Every `SKILL.md` stays lean and loads its heavier `references/` only when a step needs them (progressive disclosure), so the context cost is paid on demand.
 
@@ -102,6 +104,46 @@ It ships **one framework-aware skill** (`rails-testing`) with a lean SKILL.md pl
 
 ---
 
+## multi-lens-research
+
+**Turn Claude into a rigorous researcher instead of a fast one: research from distinct lenses, adversarially verify the claims the answer rests on, and report what is verified, what is contested, and what is unknown, with citations.**
+
+The default failure mode of AI research is to fire a few near-identical searches, read the first page, and report the consensus with confidence. The first page of any query is a monoculture, and nothing ever looked for the disconfirming evidence, so the answer is fast and sometimes confidently wrong. This plugin encodes the discipline that prevents that.
+
+- **Distinct lenses, not repeated searches.** It researches from an academic lens, a technical lens, an applied/case-study lens, a news/recency lens, and a dedicated **contrarian lens** whose only job is to build the case against the emerging answer. Different angles surface what the monoculture hides.
+- **Verify before believing.** Load-bearing claims are adversarially checked (refute, don't confirm); contradictions between sources are surfaced, never silently reconciled.
+- **Anti-confirmation-bias rounds.** One pass is a draft. It runs follow-up rounds aimed at the weakest and most contested claims, weighted toward disconfirming evidence, and loops until the research converges.
+- **Honest output.** The report separates verified from contested from unknown, tags each finding with a confidence level earned by independent corroboration (not repetition), and cites everything.
+
+It runs as a **parallel subagent fan-out** when the harness supports it (one agent per lens, then per-claim verification), or a **single-agent sequential loop** when it does not, same method either way. It ships **one skill** (`multi-lens-research`) with a lean SKILL.md plus four on-demand references (`lenses.md`, `verification.md`, `orchestration.md`, `synthesis.md`) and a report template. It owns research rigor and source diversity, and composes with a `deep-research` or web-search skill that owns the raw fetching.
+
+### Use it
+
+- **To research:** "research X thoroughly," "compare A vs B," "what's the state of the art in Y," "landscape scan of Z," or any due-diligence ask where being confidently wrong is expensive.
+- **To fact-check at scale:** "is it true that…" or "find the strongest case for and against." It verifies load-bearing claims and reports confidence earned by corroboration.
+
+---
+
+## critical-reasoning
+
+**Turn Claude into a disciplined critical reasoner instead of a fallacy labeler: test whether the evidence is sound, then whether the conclusion follows, and report what holds, what genuinely breaks, and what is just a nitpick.**
+
+Two failure modes show up whenever an AI evaluates an argument. **Credulity:** accepting a confident, well-written argument because nothing in it looked wrong, when its evidence was one recycled source or its key step never actually followed. And the more seductive one, **slop:** hunting fallacies, slapping Latin labels on things, flagging every technically-present imperfection, and dismissing conclusions because their arguments are flawed. Slop *looks* like critical thinking and measurably lowers answer quality, so this plugin's default is to critique almost nothing and to earn every flaw it raises.
+
+- **Evidence first (Level 1), then inference (Level 2).** A conclusion that follows perfectly from bad evidence is still unsupported, so it checks independence, incentives, recency, primary-source, base rates, and corroboration-vs-repetition *before* touching the logic. Three outlets copying one press release are one source, not three.
+- **A method, not a glossary.** It reconstructs the argument (claim / grounds / warrant), steelmans it, names its *type* (which selects the few critical questions that fit), finds the one load-bearing assumption, and runs only the two or three checks aimed at that joint, so it never recites a fallacy taxonomy.
+- **Anti-slop hard gates.** It keeps two verdicts separate (a weak *argument* never makes a *conclusion* false), applies a change-the-conclusion bar so nitpicks are suppressed, refuses to let a fallacy name stand as a dismissal, and scrutinizes the favored side as hard as the opposed one.
+- **Honest grounding.** The fallacy and bias catalogs are filtered: contested fallacies carry their legitimate forms (citing real expert consensus is not a fallacy), and biases are replication-filtered (anchoring and framing in, ego-depletion and the naive Dunning-Kruger curve out).
+
+It ships **one skill** (`critical-reasoning`) with the five-step method plus four references (`method.md`, `evidence.md`, `fallacies.md`, `biases.md`) and an analysis template. It owns the reasoning discipline applied to an argument already in front of you, and composes with `multi-lens-research`: that skill gathers and verifies sources at scale, this one is the portable two-level pass you apply to an argument you already have.
+
+### Use it
+
+- **To pressure-test:** "does this reasoning hold up," "poke holes in this," "stress-test this design doc / RFC / decision memo," "what am I missing," or "check my logic" on your own draft.
+- **To vet a claim:** "is this evidence any good," "should I trust this vendor's / paper's / benchmark's claim before acting on it." It reports sound / load-bearing flaw / nitpick and suppresses the nitpicks.
+
+---
+
 More plugins land here over time. Add the marketplace once and you get them as they ship.
 
 ## Repository layout
@@ -111,7 +153,9 @@ claude-plugins/
 ├── .claude-plugin/marketplace.json   the marketplace manifest (lists every plugin)
 ├── plugins/
 │   ├── high-fidelity-web/            design-engineering plugin: 3 skills + cited research
-│   └── rails-testing/                Rails testing plugin: 1 framework-aware skill
+│   ├── rails-testing/                Rails testing plugin: 1 framework-aware skill
+│   ├── multi-lens-research/          rigorous research plugin: 1 skill + lens/verify references
+│   └── critical-reasoning/           argument-evaluation plugin: 1 skill + method/evidence references
 └── README.md                         you are here
 ```
 
