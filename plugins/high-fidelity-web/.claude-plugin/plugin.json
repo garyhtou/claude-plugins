@@ -1,7 +1,6 @@
 {
   "name": "high-fidelity-web",
   "description": "Turns Claude into a design engineer for high-fidelity, interactive, animated marketing and landing sites (the awwwards-grade Stripe/Linear/Vercel tier). Includes a full-lifecycle build skill, a standalone quality-audit skill, and a skill for building believable 3D models for the web (procedural Blender to glTF/GLB to Three.js/React-Three-Fiber).",
-  "version": "0.3.1",
   "author": {
     "name": "Gary Tou"
   },

@@ -1,7 +1,6 @@
 {
   "name": "rails-testing",
-  "description": "Turns Claude into a senior Rails test engineer for both RSpec and Minitest. Auto-detects the project's framework, then writes tests that check behavior (not implementation), run green for the right reasons, don't go flaky, and don't silently go slow. Encodes Sandi Metz's mocking/assertion policy, a classicist default, request-specs-over-controller-specs, first-class Minitest + fixtures, a flaky-test playbook, and performance-regression tests (N+1 and query counts, strict_loading). Composes with test-driven-development.",
-  "version": "0.2.0",
+  "description": "Turns Claude into a senior Rails test engineer for both RSpec and Minitest, whether you are writing tests or reviewing someone else's. Auto-detects the project's framework, then writes tests that check behavior (not implementation), run green for the right reasons, don't go flaky, and don't silently go slow. Encodes Sandi Metz's mocking/assertion policy, a classicist default, request-specs-over-controller-specs, first-class Minitest + fixtures, a flaky-test playbook, and performance-regression tests (N+1 and query counts, strict_loading). Review mode is a first-class path: it leads with the question that catches hollow tests (would a behavior-breaking change keep this green?), hunts for what is absent (authorization, failure paths, idempotency), and reports in blocking / should-fix / minor tiers instead of a flat list of smells. Composes with test-driven-development.",
   "author": {
     "name": "Gary Tou"
   },

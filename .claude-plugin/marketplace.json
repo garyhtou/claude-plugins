@@ -13,7 +13,7 @@
     {
       "name": "rails-testing",
       "source": "./plugins/rails-testing",
-      "description": "Senior Rails test engineering for both RSpec and Minitest. Auto-detects the framework, then writes behavior-first tests that don't go flaky or silently slow: Sandi Metz's mocking policy, a classicist default, request-specs-over-controller-specs, first-class Minitest + fixtures, factory_bot discipline, a flaky-test playbook, and N+1 / query-count performance tests. Composes with test-driven-development."
+      "description": "Senior Rails test engineering for both RSpec and Minitest, whether you are writing tests or reviewing someone else's. Auto-detects the framework, then writes behavior-first tests that don't go flaky or silently slow: Sandi Metz's mocking policy, a classicist default, request-specs-over-controller-specs, first-class Minitest + fixtures, factory_bot discipline, a flaky-test playbook, and N+1 / query-count performance tests. Review mode is a first-class path: it catches tests that pass for the wrong reason, hunts for what is absent (authorization, failure paths, idempotency), and reports in severity tiers. Composes with test-driven-development."
     },
     {
       "name": "multi-lens-research",
