@@ -16,6 +16,11 @@ The single most common way an agent writes bad Rails tests is **over-mocking and
 asserting on internals** so the test passes while the real thing is broken and
 breaks on every refactor. The judgment sections below exist to prevent that.
 
+**Reviewing tests rather than writing them? Start at "Review mode" near the end.**
+Everything before it is written for an author; Review mode inverts it into a scan
+order and specifies the output, then sends you back to the judgment sections and
+`references/reliability.md` §9 for the substance.
+
 ## How this composes with other skills
 
 - **`test-driven-development`** owns the *when and the order*: write the failing
@@ -310,13 +315,76 @@ big table in production. Full tool map, APIs, flake-proofing, and the
 
 ## Review mode
 
-When asked to review or critique tests (not write them), read
-`references/reliability.md` (section 9, the anti-pattern catalog) and hunt:
-over-mocking / testing implementation,
-mystery guest, fragile/overspecified tests, non-deterministic tests, assertion
-roulette, testing private methods or framework behavior, and controller/view
-specs that duplicate request/system coverage. Report each finding with the file,
-the smell, and the concrete fix.
+Reviewing tests is a different task from writing them, with a different output.
+Everything above is written for an author; invert it into checks as follows.
+
+**The two questions that drive every finding.** Ask them of each example before
+hunting for named smells:
+
+1. **Would a behavior-breaking change keep this green?** If the method under
+   test were replaced with `true`, the discount ignored, or the charge amount
+   zeroed, would this example still pass? If yes, it pins nothing. This is the
+   most productive question in a test review.
+2. **Would a behavior-preserving refactor redden it?** If renaming a private
+   method or reordering internals breaks it, the test is welded to
+   implementation.
+
+**Scan order.** One pass per eye, in this order:
+
+1. **Arrange:** does the setup actually establish the state the test name
+   claims? A test named "declined card" that never arranges a decline is
+   passing on an unrelated error, so the real path has *zero* coverage. Same
+   for asserting a status that was already true before the act.
+2. **Assert:** vacuous matchers (`be_truthy`, `be > 0`, `be_present`, `not_to
+   be_nil`, bare `raise_error`, `have_received` with no `.with(...)` when the
+   arguments are the behavior).
+3. **Mocks:** is the subject itself stubbed? Is an owned non-boundary object
+   doubled? Is a legitimate boundary double unverified or unconstrained? Use
+   the message table above; it separates "this mock is illegitimate" (delete it)
+   from "this mock is correct but under-specified" (constrain it).
+4. **Determinism:** time, ordering, randomness, network, `sleep`, leaked state.
+   Give `before(:all)` its own look: it runs *outside* the per-example
+   transaction, so its rows commit and leak into every file that runs after.
+5. **Placement:** right layer, right directory, not duplicating coverage another
+   layer already has.
+6. **Coverage gaps (do not skip):** what is *absent*. Authorization on any
+   endpoint that mutates or charges, failure paths, negative counterparts,
+   idempotency, and a missing N+1 or query-count guard on any endpoint that
+   loads a collection (`references/performance.md`). On a PR, a missing
+   authorization test routinely outranks every style finding in the file.
+
+**Output contract.** A flat list of twenty equal-weight bullets gets ignored,
+and it has the same defect as the assertion roulette it complains about.
+Produce exactly this:
+
+- A one-line verdict, then findings in three tiers, most severe first:
+  **blocking**, **should fix**, **minor**. A finding is blocking if *any* of:
+  the test cannot fail for the reason it claims; a security-relevant case is
+  untested; or it corrupts state for other tests (`before(:all)` writes, leaked
+  globals, a committed row), where the blast radius is the whole suite rather
+  than this file.
+- One finding per line range, each carrying `file:line`, the smell, and the
+  concrete fix as code. When one range carries several independent smells, keep
+  it as a single finding with sub-bullets rather than repeating the range.
+- A short **coverage gaps** section for what is absent. List only gaps you did
+  not already raise as blocking; cross-reference those rather than restating
+  them.
+- Keep a finding only if it changes whether you approve, or its fix is a single
+  token (`Time.now` -> `Time.current`). Leave out everything else.
+
+**When you cannot read the code under test** (a diff-only review), say so and
+mark the affected findings contingent rather than asserting them.
+
+**Escalating to the implementation.** Some test smells are the code's fault: a
+setter that exists only for tests, a method that cannot be exercised without
+stubbing the subject, five collaborators that must all be mocked. Name the
+design change instead of helping the author write a better test against a bad
+seam. (`references/philosophy.md`, test-induced design damage.)
+
+**Where the review material lives:** `references/reliability.md` §9 is the
+pattern library (one entry per smell, with its fix); §1 and §3 back the
+determinism pass; `references/performance.md` covers the missing N+1 guard on a
+hot endpoint.
 
 ## Reference files (load as needed)
 

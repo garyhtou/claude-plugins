@@ -97,7 +97,7 @@ It ships **one framework-aware skill** (`rails-testing`) with a lean SKILL.md pl
 
 - **To write tests:** "write a request spec for the checkout endpoint," "test this model," or just "add tests" to Rails code. It detects the framework and writes behavior-first tests.
 - **To fix flakiness:** "this spec is flaky" or "this test fails intermittently in CI." It walks the root-cause checklist and reproduces with the seed.
-- **To review:** "review these tests." It hunts over-mocking, mystery guests, non-determinism, and specs that test the framework instead of your code.
+- **To review:** "review these tests," or point it at a PR. Review mode is a first-class path, not an afterthought: it leads with the two questions that catch hollow tests (*would a behavior-breaking change keep this green? would a refactor redden it?*), runs a six-pass scan ending in an explicit hunt for what is **absent** (authorization, failure paths, idempotency), and reports in blocking / should-fix / minor tiers rather than a flat wall of equal-weight smells.
 - **To catch slowness:** "make sure this endpoint doesn't N+1" or "add a query-count guard." It asserts query counts (not flaky wall-clock time) and the N+1-doesn't-scale-with-records pattern.
 
 ---

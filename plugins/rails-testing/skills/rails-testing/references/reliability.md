@@ -246,8 +246,32 @@ When reviewing tests, hunt these and report each with file, smell, and fix:
   internal calls; it passes when the real integration is broken and breaks on
   every refactor. Fix: use real objects; mock only outgoing commands to boundaries
   (philosophy.md). Operational check: does a behavior-preserving refactor redden it?
+- **Passes for the wrong reason**: the arrange block never establishes the
+  precondition the test name claims, so the example goes green on an unrelated
+  error or on state that was already true. A `"declined card"` example that stubs
+  no decline is passing on a `NoMethodError` from a nil gateway, which means the
+  decline path has zero coverage while looking covered. This hides behind an
+  otherwise-clean test, so it is the first thing to check, before any named smell.
+  Fix: arrange the failure explicitly, then constrain the assertion to it.
+- **Name/behavior mismatch**: the description promises something the body does
+  not do (`"works end to end"` on a model spec, `"blows up on a dead card"` with
+  no card). Strong review signal: it usually means the author knew what they
+  meant to test and did not get there. Fix: make the body match the name, or
+  rename to what it actually tests, whichever is the real intent.
 - **Mystery guest**: the test depends on data defined far away (a distant `let`,
   a broad fixture, a `before(:all)`). Fix: make the essential data local and visible.
+- **`before(:all)` records that escape the transaction**: distinct from, and more
+  serious than, the mystery-guest smell above. Transactional tests wrap each
+  *example*, not `before(:all)`, so rows created there are committed: they leak
+  into every spec that runs afterward, break under parallel workers on a unique
+  index, and leave the in-memory ivar diverging from the DB once an example's
+  writes roll back. Fix: `let` + factories (§3), or `test-prof`'s `let_it_be`
+  when the setup cost is real.
+- **Misplaced or mixed spec types**: several top-level `describe`s of different
+  types in one file, or explicit `type:` metadata compensating for the wrong
+  directory. Breaks `infer_spec_type_from_file_location!`, makes
+  `rspec spec/models` silently skip or unexpectedly boot a browser. Fix: one
+  spec type per file, in the directory that implies it.
 - **Fragile / overspecified test**: asserts on incidental details or exact
   internal structure. Fix: assert the behavior the caller relies on.
 - **Weak / vacuous assertion**: the opposite failure, an assertion so loose it
